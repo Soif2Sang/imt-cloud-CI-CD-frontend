@@ -31,8 +31,7 @@ export interface Project {
   registry_token?: string;
   pipeline_filename?: string;
   deployment_filename?: string;
-  sonar_url?: string;
-  sonar_token?: string;
+  variables?: Variable[];
 }
 
 export interface NewProject {
@@ -46,8 +45,15 @@ export interface NewProject {
   registry_token?: string;
   pipeline_filename?: string;
   deployment_filename?: string;
-  sonar_url?: string;
-  sonar_token?: string;
+}
+
+export interface Variable {
+  id: number;
+  project_id: number;
+  key: string;
+  value: string;
+  is_secret: boolean;
+  created_at: string;
 }
 
 export interface Pipeline {
@@ -117,6 +123,21 @@ export const updateProject = async (id: number, project: NewProject) => {
 
 export const deleteProject = async (id: number) => {
   await api.delete(`/projects/${id}`);
+};
+
+// Variables
+export const getVariables = async (projectId: number) => {
+  const { data } = await api.get<Variable[]>(`/projects/${projectId}/variables`);
+  return data;
+};
+
+export const createVariable = async (projectId: number, variable: Partial<Variable>) => {
+  const { data } = await api.post<Variable>(`/projects/${projectId}/variables`, variable);
+  return data;
+};
+
+export const deleteVariable = async (projectId: number, key: string) => {
+  await api.delete(`/projects/${projectId}/variables/${key}`);
 };
 
 // Pipelines

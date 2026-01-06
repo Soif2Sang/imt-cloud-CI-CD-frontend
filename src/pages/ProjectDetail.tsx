@@ -3,14 +3,14 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getProject, getPipelines, triggerPipeline, updateProject, api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { 
-  GitCommit, 
-  GitBranch, 
-  Clock, 
-  Play, 
-  CheckCircle2, 
-  XCircle, 
-  Loader2, 
+import {
+  GitCommit,
+  GitBranch,
+  Clock,
+  Play,
+  CheckCircle2,
+  XCircle,
+  Loader2,
   ExternalLink,
   Box,
   Github,
@@ -254,10 +254,10 @@ export function ProjectDetail() {
                 <h1 className="text-3xl font-bold tracking-tight text-foreground">{project.name}</h1>
                 <Badge variant="secondary" className="font-mono text-xs">ID: {project.id}</Badge>
             </div>
-            
-            <a 
-              href={project.repo_url} 
-              target="_blank" 
+
+            <a
+              href={project.repo_url}
+              target="_blank"
               rel="noreferrer"
               className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors text-sm"
             >
@@ -266,7 +266,7 @@ export function ProjectDetail() {
               <ExternalLink size={12} />
             </a>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setIsTeamOpen(true)} className="gap-2">
               <Users className="h-4 w-4" />
@@ -321,15 +321,13 @@ export function ProjectDetail() {
 
       <Separator />
 
-      <Separator />
-
       {/* Pipelines List */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-muted-foreground" />
             <h2 className="text-xl font-semibold tracking-tight">Pipeline History</h2>
         </div>
-        
+
         <Card>
             {isPipelinesLoading ? (
                  <div className="p-8 text-center text-muted-foreground">Loading pipelines...</div>
@@ -344,14 +342,14 @@ export function ProjectDetail() {
             ) : (
                 <div className="divide-y divide-border">
                     {pipelines?.map((pipeline) => (
-                        <Link 
-                            key={pipeline.id} 
+                        <Link
+                            key={pipeline.id}
                             to={`/projects/${project.id}/pipelines/${pipeline.id}`}
                             className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors group"
                         >
                             <div className="flex items-center gap-4">
                                 <StatusBadge status={pipeline.status} />
-                                
+
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2">
                                         <span className="font-semibold text-sm">#{pipeline.id}</span>
@@ -384,11 +382,11 @@ export function ProjectDetail() {
 
 
 
-      <TeamDialog 
-        project={project} 
+      <TeamDialog
+        project={project}
         members={members}
         currentUser={user}
-        open={isTeamOpen} 
+        open={isTeamOpen}
         onOpenChange={setIsTeamOpen}
         onInvite={(email) => inviteMutation.mutate(email)}
         onRemove={(userId) => removeMemberMutation.mutate(userId)}

@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getProject, updateProject } from '../../lib/api';
+import { getProject, updateProject, getVariables, createVariable, deleteVariable } from '../../lib/api';
 import type { NewProject } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Save } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, ArrowLeft, Save, Trash2, Plus, Lock, Unlock } from 'lucide-react';
 
 export function ProjectSettings() {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +30,29 @@ export function ProjectSettings() {
     registry_token: '',
     sonar_url: '',
     sonar_token: '',
+  });
+
+  const [newVar, setNewVar] = useState({ key: '', value: '', is_secret: false });
+
+  const { data: variables } = useQuery({
+    queryKey: ['variables', projectId],
+    queryFn: () => getVariables(projectId),
+    enabled: !!projectId,
+  });
+
+  const createVarMutation = useMutation({
+    mutationFn: () => createVariable(projectId, newVar),
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['variables', projectId] });
+        setNewVar({ key: '', value: '', is_secret: false });
+    }
+  });
+
+  const deleteVarMutation = useMutation({
+    mutationFn: (key: string) => deleteVariable(projectId, key),
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['variables', projectId] });
+    }
   });
 
   const { data: project, isLoading } = useQuery({
@@ -219,23 +242,89 @@ export function ProjectSettings() {
                 </Card>
             </section>
 
-             {/* Integrations */}
-             <section className="space-y-4">
-                <h2 className="text-xl font-semibold tracking-tight">Integrations</h2>
+            {/* Environment Variables */}
+            <section className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-semibold tracking-tight">Environment Variables</h2>
+                </div>
                 <Card>
                     <CardHeader>
-                        <CardTitle>SonarQube</CardTitle>
-                        <CardDescription>Connect to SonarQube for code quality analysis.</CardDescription>
+                        <CardTitle>Variables & Secrets</CardTitle>
+                        <CardDescription>Define environment variables to be injected into your CI/CD pipeline.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="sonar_url">Sonar Host URL</Label>
-                                <Input id="sonar_url" name="sonar_url" value={formData.sonar_url} onChange={handleChange} placeholder="e.g. http://localhost:9000" />
+                    <CardContent className="space-y-6">
+                        {/* List Variables */}
+                        <div className="rounded-md border">
+                            <div className="grid grid-cols-12 border-b bg-muted/50 p-3 text-sm font-medium">
+                                <div className="col-span-4">Key</div>
+                                <div className="col-span-6">Value</div>
+                                <div className="col-span-2 text-right">Actions</div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="sonar_token">Sonar Token</Label>
-                                <Input id="sonar_token" name="sonar_token" type="password" value={formData.sonar_token} onChange={handleChange} />
+                            {variables?.length === 0 ? (
+                                <div className="p-4 text-center text-sm text-muted-foreground">
+                                    No variables defined yet.
+                                </div>
+                            ) : (
+                                variables?.map((v) => (
+                                    <div key={v.key} className="grid grid-cols-12 items-center border-b p-3 text-sm last:border-0">
+                                        <div className="col-span-4 font-mono">{v.key}</div>
+                                        <div className="col-span-6 font-mono text-muted-foreground truncate">
+                                            {v.is_secret ? '••••••••' : v.value}
+                                        </div>
+                                        <div className="col-span-2 flex justify-end">
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                onClick={() => deleteVarMutation.mutate(v.key)}
+                                                disabled={deleteVarMutation.isPending}
+                                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        {/* Add Variable */}
+                        <div className="space-y-4 rounded-lg border p-4 bg-muted/20">
+                            <h4 className="text-sm font-medium">Add New Variable</h4>
+                            <div className="grid gap-4 sm:grid-cols-12">
+                                <div className="sm:col-span-4">
+                                    <Input 
+                                        placeholder="Key (e.g. API_KEY)" 
+                                        value={newVar.key}
+                                        onChange={(e) => setNewVar(prev => ({ ...prev, key: e.target.value }))}
+                                        className="font-mono"
+                                    />
+                                </div>
+                                <div className="sm:col-span-6">
+                                    <Input 
+                                        placeholder="Value" 
+                                        type={newVar.is_secret ? "password" : "text"}
+                                        value={newVar.value}
+                                        onChange={(e) => setNewVar(prev => ({ ...prev, value: e.target.value }))}
+                                        className="font-mono"
+                                    />
+                                </div>
+                                <div className="sm:col-span-2 flex items-center gap-2">
+                                    <Button 
+                                        onClick={() => setNewVar(prev => ({ ...prev, is_secret: !prev.is_secret }))}
+                                        variant="outline"
+                                        size="icon"
+                                        title={newVar.is_secret ? "Secret (Hidden)" : "Public (Visible)"}
+                                    >
+                                        {newVar.is_secret ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                                    </Button>
+                                    <Button 
+                                        onClick={() => createVarMutation.mutate()} 
+                                        disabled={!newVar.key || !newVar.value || createVarMutation.isPending}
+                                        className="w-full"
+                                    >
+                                        <Plus className="h-4 w-4 mr-2" /> Add
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </CardContent>
