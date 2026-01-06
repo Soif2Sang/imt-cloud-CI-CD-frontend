@@ -6,6 +6,11 @@ import { Projects } from './pages/Projects';
 import { ProjectDetail } from './pages/ProjectDetail';
 import { PipelineDetail } from './pages/PipelineDetail';
 import { NewProject } from './pages/NewProject';
+import { ProjectSettings } from './pages/ProjectSettings/ProjectSettings';
+import { AuthProvider } from './context/AuthContext';
+import { Login } from './pages/Login';
+import { AuthCallback } from './pages/AuthCallback';
+import { RequireAuth } from './components/RequireAuth';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,18 +24,26 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Projects />} />
-            <Route path="new" element={<NewProject />} />
-            <Route path="projects/:id" element={<ProjectDetail />} />
-            <Route path="projects/:projectId/pipelines/:pipelineId" element={<PipelineDetail />} />
-            {/* Catch all redirect */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            
+            <Route element={<RequireAuth />}>
+              <Route path="/" element={<Layout />}>
+                <Route index element={<Projects />} />
+                <Route path="new" element={<NewProject />} />
+                <Route path="projects/:id" element={<ProjectDetail />} />
+                <Route path="projects/:id/settings" element={<ProjectSettings />} />
+                <Route path="projects/:projectId/pipelines/:pipelineId" element={<PipelineDetail />} />
+                {/* Catch all redirect */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

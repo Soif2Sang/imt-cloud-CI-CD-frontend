@@ -1,8 +1,8 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getProject, getPipelines, triggerPipeline, updateProject } from '../lib/api';
-import type { NewProject } from '../lib/api';
+import { getProject, getPipelines, triggerPipeline, updateProject, api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { 
   GitCommit, 
   GitBranch, 
@@ -14,7 +14,11 @@ import {
   ExternalLink,
   Box,
   Github,
-  Settings
+  Settings,
+  Users,
+  UserPlus,
+  Trash2,
+  Shield
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from "@/components/ui/button";
@@ -23,7 +27,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -33,148 +36,119 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-function EditProjectDialog({ project, open, onOpenChange }: { project: any, open: boolean, onOpenChange: (open: boolean) => void }) {
-  const queryClient = useQueryClient();
-  const [formData, setFormData] = React.useState<NewProject>({
-    name: project.name,
-    repo_url: project.repo_url,
-    access_token: project.access_token,
-    pipeline_filename: project.pipeline_filename || '.gitlab-ci.yml',
-    deployment_filename: project.deployment_filename || 'docker-compose.yml',
-    ssh_host: project.ssh_host || '',
-    ssh_user: project.ssh_user || '',
-    ssh_private_key: project.ssh_private_key || '',
-    registry_user: project.registry_user || '',
-    registry_token: project.registry_token || '',
-    sonar_url: project.sonar_url || '',
-    sonar_token: project.sonar_token || '',
-  });
+interface ProjectMember {
+  user_id: number;
+  project_id: number;
+  role: string;
+  joined_at: string;
+  user: {
+    id: number;
+    email: string;
+    name: string;
+    avatar_url: string;
+  };
+}
 
-  const updateMutation = useMutation({
-    mutationFn: () => updateProject(project.id, formData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project', project.id] });
-      onOpenChange(false);
-    },
-  });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+
+function TeamDialog({
+  project,
+  members,
+  currentUser,
+  open,
+  onOpenChange,
+  onInvite,
+  onRemove,
+  isInvitePending
+}: {
+  project: any,
+  members: ProjectMember[] | undefined,
+  currentUser: any,
+  open: boolean,
+  onOpenChange: (open: boolean) => void,
+  onInvite: (email: string) => void,
+  onRemove: (userId: number) => void,
+  isInvitePending: boolean
+}) {
+  const [email, setEmail] = React.useState('');
+
+  const handleInvite = () => {
+    onInvite(email);
+    setEmail('');
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Edit Project Settings</DialogTitle>
+          <DialogTitle>Team Management</DialogTitle>
           <DialogDescription>
-            Update project details, repository access, and deployment credentials.
+            Manage collaborators and their access to {project.name}.
           </DialogDescription>
         </DialogHeader>
-        
-        <div className="grid gap-6 py-4">
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium leading-none text-muted-foreground">General Information</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Project Name</Label>
-                <Input id="name" name="name" value={formData.name} onChange={handleChange} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="repo_url">Repository URL</Label>
-                <Input id="repo_url" name="repo_url" value={formData.repo_url} onChange={handleChange} />
-              </div>
-            </div>
-             <div className="space-y-2">
-                <Label htmlFor="access_token">Git Access Token</Label>
-                <Input id="access_token" name="access_token" type="password" value={formData.access_token} onChange={handleChange} />
-            </div>
-          </div>
 
-          <Separator />
-
-          <div className="space-y-4">
-             <h3 className="text-sm font-medium leading-none text-muted-foreground">CI/CD Configuration</h3>
-             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="pipeline_filename">Pipeline Filename</Label>
-                    <Input id="pipeline_filename" name="pipeline_filename" value={formData.pipeline_filename} onChange={handleChange} placeholder=".gitlab-ci.yml" />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="deployment_filename">Deployment Filename</Label>
-                    <Input id="deployment_filename" name="deployment_filename" value={formData.deployment_filename} onChange={handleChange} placeholder="docker-compose.yml" />
-                </div>
-             </div>
-          </div>
-
-          <Separator />
-
-           <div className="space-y-4">
-             <h3 className="text-sm font-medium leading-none text-muted-foreground">Container Registry</h3>
-             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="registry_user">Registry User</Label>
-                    <Input id="registry_user" name="registry_user" value={formData.registry_user} onChange={handleChange} />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="registry_token">Registry Token</Label>
-                    <Input id="registry_token" name="registry_token" type="password" value={formData.registry_token} onChange={handleChange} />
-                </div>
-             </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-4">
-             <h3 className="text-sm font-medium leading-none text-muted-foreground">Code Quality (SonarQube)</h3>
-             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="sonar_url">Sonar Host URL</Label>
-                    <Input id="sonar_url" name="sonar_url" value={formData.sonar_url} onChange={handleChange} placeholder="e.g. http://localhost:9000" />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="sonar_token">Sonar Token</Label>
-                    <Input id="sonar_token" name="sonar_token" type="password" value={formData.sonar_token} onChange={handleChange} />
-                </div>
-             </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-4">
-             <h3 className="text-sm font-medium leading-none text-muted-foreground">SSH Deployment</h3>
-             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="ssh_host">SSH Host</Label>
-                    <Input id="ssh_host" name="ssh_host" value={formData.ssh_host} onChange={handleChange} placeholder="e.g. 192.168.1.10" />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="ssh_user">SSH User</Label>
-                    <Input id="ssh_user" name="ssh_user" value={formData.ssh_user} onChange={handleChange} placeholder="e.g. root" />
-                </div>
-             </div>
-             <div className="space-y-2">
-                <Label htmlFor="ssh_private_key">SSH Private Key</Label>
-                <Textarea 
-                    id="ssh_private_key" 
-                    name="ssh_private_key" 
-                    value={formData.ssh_private_key} 
-                    onChange={handleChange} 
-                    className="font-mono text-xs h-24"
-                    placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" 
+        <div className="space-y-6 py-4">
+           {currentUser?.id === project.owner_id && (
+            <div className="flex items-end gap-3">
+              <div className="space-y-2 flex-1">
+                <Label htmlFor="email">Invite by Email</Label>
+                <Input
+                  id="email"
+                  placeholder="colleague@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
+              </div>
+              <Button
+                onClick={handleInvite}
+                disabled={!email || isInvitePending}
+              >
+                {isInvitePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                Invite
+              </Button>
             </div>
-          </div>
-        </div>
+           )}
 
-        <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
-                {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Changes
-            </Button>
-        </DialogFooter>
+           {currentUser?.id === project.owner_id && <Separator />}
+
+           <div className="space-y-3">
+              <h4 className="text-sm font-medium text-muted-foreground">Active Members</h4>
+              <div className="space-y-2">
+                {members?.map((member) => (
+                  <div key={member.user_id} className="flex items-center justify-between p-3 rounded-lg border bg-card/50">
+                    <div className="flex items-center gap-3">
+                        {member.user.avatar_url ? (
+                          <img src={member.user.avatar_url} alt={member.user.name} className="h-8 w-8 rounded-full" />
+                        ) : (
+                          <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center">
+                            <span className="font-bold text-xs">{member.user.name?.charAt(0).toUpperCase()}</span>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm font-medium">{member.user.name} {currentUser?.id === member.user.id && <span className="text-muted-foreground">(You)</span>}</p>
+                          <p className="text-xs text-muted-foreground">{member.user.email}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="capitalize">
+                          {member.role}
+                        </Badge>
+                        {currentUser?.id === project.owner_id && member.user.id !== currentUser.id && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => onRemove(member.user.id)}
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+           </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -209,7 +183,8 @@ export function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const projectId = parseInt(id || '0');
   const queryClient = useQueryClient();
-  const [isEditOpen, setIsEditOpen] = React.useState(false);
+  const [isTeamOpen, setIsTeamOpen] = React.useState(false);
+  const { user } = useAuth();
 
   const { data: project, isLoading: isProjectLoading } = useQuery({
     queryKey: ['project', projectId],
@@ -224,10 +199,33 @@ export function ProjectDetail() {
     refetchInterval: 5000,
   });
 
+  const { data: members, refetch: refetchMembers } = useQuery({
+    queryKey: ['members', projectId],
+    queryFn: async () => {
+      const { data } = await api.get<ProjectMember[]>(`/projects/${projectId}/members`);
+      return data;
+    },
+    enabled: !!projectId,
+  });
+
   const triggerMutation = useMutation({
     mutationFn: () => triggerPipeline(projectId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pipelines', projectId] });
+    },
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: (email: string) => api.post(`/projects/${projectId}/members`, { email, role: 'viewer' }),
+    onSuccess: () => {
+      refetchMembers();
+    },
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: (userId: number) => api.delete(`/projects/${projectId}/members/${userId}`),
+    onSuccess: () => {
+      refetchMembers();
     },
   });
 
@@ -255,9 +253,6 @@ export function ProjectDetail() {
             <div className="flex items-center gap-3">
                 <h1 className="text-3xl font-bold tracking-tight text-foreground">{project.name}</h1>
                 <Badge variant="secondary" className="font-mono text-xs">ID: {project.id}</Badge>
-                <Button variant="ghost" size="icon" onClick={() => setIsEditOpen(true)}>
-                    <Settings className="h-4 w-4" />
-                </Button>
             </div>
             
             <a 
@@ -272,18 +267,30 @@ export function ProjectDetail() {
             </a>
         </div>
         
-        <Button
-            onClick={() => triggerMutation.mutate()}
-            disabled={triggerMutation.isPending}
-            size="lg"
-        >
-            {triggerMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-                <Play className="mr-2 h-4 w-4" />
-            )}
-            Run Pipeline
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setIsTeamOpen(true)} className="gap-2">
+              <Users className="h-4 w-4" />
+              Team
+          </Button>
+          {user?.id === project.owner_id && (
+            <Button variant="outline" size="icon" asChild>
+                <Link to={`/projects/${projectId}/settings`}>
+                    <Settings className="h-4 w-4" />
+                </Link>
+            </Button>
+          )}
+          <Button
+              onClick={() => triggerMutation.mutate()}
+              disabled={triggerMutation.isPending}
+          >
+              {triggerMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                  <Play className="mr-2 h-4 w-4" />
+              )}
+              Run Pipeline
+          </Button>
+        </div>
       </div>
 
       {/* Project Stats */}
@@ -311,6 +318,8 @@ export function ProjectDetail() {
             </CardContent>
         </Card>
       </div>
+
+      <Separator />
 
       <Separator />
 
@@ -373,7 +382,18 @@ export function ProjectDetail() {
         </Card>
       </div>
 
-      <EditProjectDialog project={project} open={isEditOpen} onOpenChange={setIsEditOpen} />
+
+
+      <TeamDialog 
+        project={project} 
+        members={members}
+        currentUser={user}
+        open={isTeamOpen} 
+        onOpenChange={setIsTeamOpen}
+        onInvite={(email) => inviteMutation.mutate(email)}
+        onRemove={(userId) => removeMemberMutation.mutate(userId)}
+        isInvitePending={inviteMutation.isPending}
+      />
     </div>
   );
 }

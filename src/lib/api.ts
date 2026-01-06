@@ -9,8 +9,17 @@ export const api = axios.create({
   },
 });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export interface Project {
   id: number;
+  owner_id: number;
   name: string;
   repo_url: string;
   access_token: string;

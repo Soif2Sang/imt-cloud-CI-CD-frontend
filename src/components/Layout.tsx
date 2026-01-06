@@ -1,12 +1,14 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Plus, Settings, Github } from 'lucide-react';
+import { LayoutDashboard, Plus, Settings, Github, LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function Layout() {
   const location = useLocation();
+  const { user, logout } = useAuth();
 
   const navItems = [
     { href: '/', label: 'Projects', icon: LayoutDashboard },
@@ -55,7 +57,25 @@ export function Layout() {
         </ScrollArea>
 
         <div className="p-4 mt-auto border-t border-border bg-muted/20">
-          <div className="flex items-center gap-3 px-2 py-2 text-xs font-medium text-muted-foreground">
+          {user && (
+            <div className="flex items-center gap-3 mb-4 px-2">
+              {user.avatar_url ? (
+                <img src={user.avatar_url} alt={user.name} className="h-8 w-8 rounded-full border border-border" />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center border border-border">
+                  <span className="font-bold text-xs">{user.name?.charAt(0).toUpperCase()}</span>
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{user.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={logout} title="Logout">
+                <LogOut size={16} />
+              </Button>
+            </div>
+          )}
+          <div className="flex items-center gap-3 px-2 py-2 text-xs font-medium text-muted-foreground border-t border-border/50 pt-3">
             <Settings size={16} />
             <span>v1.0.0-beta</span>
           </div>
