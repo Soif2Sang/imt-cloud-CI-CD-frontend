@@ -31,6 +31,8 @@ export interface Project {
   registry_token?: string;
   pipeline_filename?: string;
   deployment_filename?: string;
+  sonar_url?: string;
+  sonar_token?: string;
   variables?: Variable[];
 }
 
@@ -45,6 +47,8 @@ export interface NewProject {
   registry_token?: string;
   pipeline_filename?: string;
   deployment_filename?: string;
+  sonar_url?: string;
+  sonar_token?: string;
 }
 
 export interface Variable {

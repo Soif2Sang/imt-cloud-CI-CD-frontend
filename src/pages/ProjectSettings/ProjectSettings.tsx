@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getProject, updateProject, getVariables, createVariable, deleteVariable } from '../../lib/api';
+import { getProject, updateProject, deleteProject, getVariables, createVariable, deleteVariable } from '../../lib/api';
 import type { NewProject } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from "@/components/ui/button";
@@ -9,13 +9,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Save, Trash2, Plus, Lock, Unlock } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, Trash2, Plus, Lock, Unlock, Check } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export function ProjectSettings() {
   const { id } = useParams<{ id: string }>();
   const projectId = parseInt(id || '0');
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { user } = useAuth();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   
   const [formData, setFormData] = useState<NewProject>({
     name: '',
@@ -83,6 +94,15 @@ export function ProjectSettings() {
     mutationFn: () => updateProject(projectId, formData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 2000);
+    },
+  });
+
+  const deleteProjectMutation = useMutation({
+    mutationFn: () => deleteProject(projectId),
+    onSuccess: () => {
+      navigate('/');
     },
   });
 
@@ -330,14 +350,70 @@ export function ProjectSettings() {
                     </CardContent>
                 </Card>
             </section>
+
+            {/* Danger Zone */}
+            <section className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-semibold tracking-tight text-destructive">Danger Zone</h2>
+                </div>
+                <Card className="border-destructive/50 bg-destructive/5">
+                    <CardHeader>
+                        <CardTitle className="text-destructive">Delete Project</CardTitle>
+                        <CardDescription>
+                            Permanently delete this project and all of its data. This action cannot be undone.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button 
+                            variant="destructive" 
+                            onClick={() => setIsDeleteDialogOpen(true)}
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Project
+                        </Button>
+                    </CardContent>
+                </Card>
+            </section>
        </div>
 
        <div className="sticky bottom-6 flex justify-end">
-         <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending} size="lg">
-             {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-             Save Changes
+         <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending || isSaved} size="lg">
+             {updateMutation.isPending ? (
+                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+             ) : isSaved ? (
+                 <Check className="mr-2 h-4 w-4" />
+             ) : (
+                 <Save className="mr-2 h-4 w-4" />
+             )}
+             {isSaved ? "Saved!" : "Save Changes"}
          </Button>
        </div>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you absolutely sure?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the project
+              <span className="font-semibold text-foreground"> {project.name} </span>
+              and remove all associated data, including pipelines, jobs, and logs.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+                variant="destructive" 
+                onClick={() => deleteProjectMutation.mutate()}
+                disabled={deleteProjectMutation.isPending}
+            >
+              {deleteProjectMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete Project
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
