@@ -24,7 +24,7 @@ export function Layout() {
             <div className="h-8 w-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center shadow-sm">
               <span className="font-mono font-bold">CI</span>
             </div>
-            <span>CD Platform</span>
+            <span>GitTEB</span>
           </Link>
         </div>
         
