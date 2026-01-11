@@ -239,7 +239,7 @@ export function PipelineDetail() {
           <div className="p-8">
             <div className="flex gap-12 min-w-max pb-8">
               {Object.entries(stages).map(([stageName, stageJobs], index, arr) => (
-                <div key={stageName} className="flex flex-col gap-4 w-64 relative">
+                <div key={stageName} className="flex flex-col gap-4 w-48 relative">
                   {/* Stage Header */}
                   <div className="flex items-center justify-center mb-2">
                     <Badge variant="secondary" className="uppercase text-xs font-bold tracking-wide">
@@ -271,7 +271,7 @@ export function PipelineDetail() {
 
               {/* Deployment Node (Visual) */}
               {deployment && (
-                <div className="flex flex-col gap-4 w-64 relative">
+                <div className="flex flex-col gap-4 w-48 relative">
                   <div className="flex items-center justify-center mb-2">
                     <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200 uppercase text-xs font-bold tracking-wide">
                       Production
